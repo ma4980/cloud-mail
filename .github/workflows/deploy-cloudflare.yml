@@ -222,7 +222,7 @@ jobs:
             exit 1
           fi
           
-          WORKER_URL=$(grep -o "https://.*\.workers\.dev" deploy.log || echo "")
+          WORKER_URL=$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' deploy.log | head -n 1 || true)
           
           if [ -n "$WORKER_URL" ]; then
             echo "::add-mask::$WORKER_URL"
@@ -234,25 +234,58 @@ jobs:
       - name: ♻️ 初始化資料庫 / Initialize database
         run: |
           echo "🛠️ Starting database initialization..."
-          sleep 15
-          
-          WORKER_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
-          WORKER_URL="${WORKER_URL:-${{ steps.deploy.outputs.worker_url }}}"
-          
-          if [ -z "$WORKER_URL" ]; then
-            echo "❌ Preview URL not available. Please set CUSTOM_DOMAIN."
-            exit 1
-          fi
-          
-          HTTP_CODE=$(curl -sL -w "%{http_code}" -o response.txt "$WORKER_URL/api/init/${JWT_SECRET}")
-          RESPONSE_BODY=$(cat response.txt)
+          sleep 10
 
-          if [ "$RESPONSE_BODY" = "success" ]; then
-            echo "✅ Setup completed."
-          else
-            echo "❌ Failed. HTTP: $HTTP_CODE, Response: $RESPONSE_BODY"
+          # 優先使用 workers.dev，避免自訂網域的 WAF/Bot Challenge
+          # 將 GitHub Actions 的非瀏覽器請求誤判並回傳 403。
+          WORKERS_DEV_URL="${{ steps.deploy.outputs.worker_url }}"
+          CUSTOM_DOMAIN_URL="${CUSTOM_DOMAIN:+https://$CUSTOM_DOMAIN}"
+          URLS=()
+
+          if [ -n "$WORKERS_DEV_URL" ]; then
+            URLS+=("$WORKERS_DEV_URL")
+          fi
+          if [ -n "$CUSTOM_DOMAIN_URL" ] && [ "$CUSTOM_DOMAIN_URL" != "$WORKERS_DEV_URL" ]; then
+            URLS+=("$CUSTOM_DOMAIN_URL")
+          fi
+
+          if [ ${#URLS[@]} -eq 0 ]; then
+            echo "❌ No Worker URL is available. Enable workers.dev or set CUSTOM_DOMAIN."
             exit 1
           fi
+
+          for BASE_URL in "${URLS[@]}"; do
+            echo "🔗 Trying database initialization through ${BASE_URL%%/}"
+
+            for ATTEMPT in 1 2 3 4 5; do
+              if ! HTTP_CODE=$(curl --silent --show-error --location \
+                --connect-timeout 10 --max-time 30 \
+                --output response.txt --write-out "%{http_code}" \
+                "${BASE_URL%%/}/api/init/${JWT_SECRET}"); then
+                HTTP_CODE="000"
+              fi
+
+              RESPONSE_BODY=$(cat response.txt 2>/dev/null || true)
+              if [ "$HTTP_CODE" = "200" ] && [ "$RESPONSE_BODY" = "success" ]; then
+                echo "✅ Database initialization completed."
+                exit 0
+              fi
+
+              if [ "$HTTP_CODE" = "403" ] && grep -qiE 'Just a moment|challenge-platform' response.txt; then
+                echo "::warning::Cloudflare Challenge blocked this URL; trying another endpoint."
+                break
+              fi
+
+              echo "::warning::Initialization attempt $ATTEMPT failed with HTTP $HTTP_CODE."
+              if [ "$ATTEMPT" -lt 5 ]; then
+                sleep $((ATTEMPT * 5))
+              fi
+            done
+          done
+
+          echo "❌ Database initialization failed on every available endpoint."
+          echo "Response preview: $(head -c 500 response.txt 2>/dev/null | tr '\n' ' ')"
+          exit 1
 
       - name: 🗑️ 刪除執行記錄 / Delete workflow runs
         uses: GitRML/delete-workflow-runs@main
