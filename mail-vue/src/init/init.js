@@ -16,8 +16,11 @@ export async function init() {
 
     const token = localStorage.getItem('token');
     if (!settingStore.lang) {
-        let lang = navigator.language.split('-')[0]
-        lang = lang === 'zh' ? lang : 'en'
+        const browserLang = navigator.language.toLowerCase()
+        let lang = 'en'
+        if (browserLang.startsWith('zh')) {
+            lang = /^(zh-tw|zh-hk|zh-mo)/.test(browserLang) ? 'zh-TW' : 'zh'
+        }
         settingStore.lang = lang
     }
 
