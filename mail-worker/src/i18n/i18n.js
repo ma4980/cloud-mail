@@ -9,7 +9,7 @@ app.use('*', async (c, next) => {
 	let lang = 'zh';
 	if (acceptLanguage.startsWith('en')) {
 		lang = 'en';
-	} else if (/^zh-(tw|hk|mo)/.test(acceptLanguage)) {
+	} else if (/^zh-(tw|hk|mo|hant)/.test(acceptLanguage)) {
 		lang = 'zh-TW';
 	}
 	await i18next.changeLanguage(lang);
