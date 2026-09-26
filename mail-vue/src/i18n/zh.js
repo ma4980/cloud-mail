@@ -359,5 +359,9 @@ const zh = {
     clientId: '客户端 ID',
     clientSecret: '客户端密钥',
     notOwner: '基础邮箱不属于您',
+    loggingIn: '登录中…',
+    bindEmail: '绑定邮箱',
+    bind: '绑定',
+    bindEmailPrompt: '请先注册并绑定一个邮箱',
 }
 export default zh
