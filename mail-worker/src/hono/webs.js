@@ -1,4 +1,5 @@
 import app from './hono';
+import '../security/rate-limit'
 import '../security/security'
 
 import '../api/email-api';

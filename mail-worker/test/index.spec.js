@@ -1,20 +1,45 @@
-import { env, createExecutionContext, waitOnExecutionContext, SELF } from 'cloudflare:test';
-import { describe, it, expect } from 'vitest';
-import worker from '../src';
+import { describe, expect, it } from 'vitest';
+import cryptoUtils from '../src/utils/crypto-utils.js';
+import jwtUtils from '../src/utils/jwt-utils.js';
 
-describe('Hello World worker', () => {
-	it('responds with Hello World! (unit style)', async () => {
-		const request = new Request('http://example.com');
-		// Create an empty context to pass to `worker.fetch()`.
-		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
-		// Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
-		await waitOnExecutionContext(ctx);
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+describe('credential security', () => {
+	it('hashes new passwords with versioned PBKDF2 and verifies them', async () => {
+		const password = 'correct horse battery staple';
+		const { salt, hash } = await cryptoUtils.hashPassword(password);
+
+		expect(hash).toMatch(/^pbkdf2-sha256\$310000\$/);
+		expect(await cryptoUtils.verifyPassword(password, salt, hash)).toBe(true);
+		expect(await cryptoUtils.verifyPassword('wrong password', salt, hash)).toBe(false);
 	});
 
-	it('responds with Hello World! (integration style)', async () => {
-		const response = await SELF.fetch('http://example.com');
-		expect(await response.text()).toMatchInlineSnapshot(`"Hello World!"`);
+	it('continues to verify legacy SHA-256 hashes for migration', async () => {
+		const password = 'legacy password';
+		const salt = 'legacy-salt';
+		const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + password));
+		const legacyHash = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+
+		expect(cryptoUtils.isLegacyHash(legacyHash)).toBe(true);
+		expect(await cryptoUtils.verifyPassword(password, salt, legacyHash)).toBe(true);
+	});
+});
+
+describe('JWT security', () => {
+	const context = { env: { jwt_secret: 'a-test-secret-that-is-long-enough' } };
+
+	it('issues an expiring HS256 token and verifies it', async () => {
+		const token = await jwtUtils.generateToken(context, { userId: 1 }, 60);
+		const payload = await jwtUtils.verifyToken(context, token);
+
+		expect(payload.userId).toBe(1);
+		expect(payload.exp).toBeGreaterThan(payload.iat);
+	});
+
+	it('rejects a token with a modified algorithm header', async () => {
+		const token = await jwtUtils.generateToken(context, { userId: 1 }, 60);
+		const [, payload, signature] = token.split('.');
+		const header = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' }))
+			.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+
+		expect(await jwtUtils.verifyToken(context, `${header}.${payload}.${signature}`)).toBeNull();
 	});
 });

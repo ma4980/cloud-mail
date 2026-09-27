@@ -13,6 +13,8 @@ import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
 import webhookService from '../service/webhook-service';
 
+const MAX_INCOMING_MESSAGE_BYTES = 25 * 1024 * 1024;
+
 export async function email(message, env, ctx) {
 
 	try {
@@ -43,16 +45,34 @@ export async function email(message, env, ctx) {
 			return;
 		}
 
+		if (message.rawSize && message.rawSize > MAX_INCOMING_MESSAGE_BYTES) {
+			message.setReject('Message exceeds the 25 MB limit');
+			return;
+		}
+
 		const reader = message.raw.getReader();
-		let content = '';
+		const chunks = [];
+		let totalBytes = 0;
 
 		while (true) {
 			const { done, value } = await reader.read();
 			if (done) break;
-			content += new TextDecoder().decode(value);
+			totalBytes += value.byteLength;
+			if (totalBytes > MAX_INCOMING_MESSAGE_BYTES) {
+				await reader.cancel();
+				message.setReject('Message exceeds the 25 MB limit');
+				return;
+			}
+			chunks.push(value);
 		}
 
-		const email = await PostalMime.parse(content);
+		const rawMessage = new Uint8Array(totalBytes);
+		let offset = 0;
+		for (const chunk of chunks) {
+			rawMessage.set(chunk, offset);
+			offset += chunk.byteLength;
+		}
+		const email = await PostalMime.parse(rawMessage.buffer);
 
 
 		const blockFlag = checkBlock(blackSubject, blackContent, blackFrom, email);

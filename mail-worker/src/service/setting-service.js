@@ -10,6 +10,7 @@ import {t} from '../i18n/i18n'
 import verifyRecordService from './verify-record-service';
 import userContext from '../security/user-context';
 import domainUtils from '../utils/domain-uitls';
+import {validateWebhookUrl} from './webhook-service';
 
 const settingService = {
 
@@ -127,6 +128,13 @@ const settingService = {
 
 		if (params.webhookUrl !== undefined) {
 			params.webhookUrl = domainUtils.toOssDomain(params.webhookUrl) || '';
+			if (params.webhookUrl) {
+				try {
+					params.webhookUrl = validateWebhookUrl(params.webhookUrl);
+				} catch (error) {
+					throw new BizError(error.message);
+				}
+			}
 		}
 
 		params.resendTokens = JSON.stringify(resendTokens);

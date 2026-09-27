@@ -363,5 +363,10 @@ const zh = {
     bindEmail: '绑定邮箱',
     bind: '绑定',
     bindEmailPrompt: '请先注册并绑定一个邮箱',
+    installApp: '安装 App',
+    iosInstallIntro: '在 iPhone 或 iPad 上将 Cloud Mail 加入主屏幕：',
+    iosInstallStep1: '使用 Safari 打开此网站。',
+    iosInstallStep2: '点击工具栏上的“分享”按钮。',
+    iosInstallStep3: '选择“添加到主屏幕”，再点击“添加”。',
 }
 export default zh

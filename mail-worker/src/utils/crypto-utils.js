@@ -1,4 +1,17 @@
 const encoder = new TextEncoder();
+const PBKDF2_ITERATIONS = 310000;
+const PBKDF2_PREFIX = 'pbkdf2-sha256';
+
+const toBase64 = (buffer) => btoa(String.fromCharCode(...new Uint8Array(buffer)));
+
+const constantTimeEqual = (left, right) => {
+	if (left.length !== right.length) return false;
+	let difference = 0;
+	for (let i = 0; i < left.length; i++) {
+		difference |= left.charCodeAt(i) ^ right.charCodeAt(i);
+	}
+	return difference === 0;
+};
 
 const saltHashUtils = {
 
@@ -16,24 +29,48 @@ const saltHashUtils = {
 	},
 
 	async genHashPassword(password, salt) {
-		const data = encoder.encode(salt + password);
-		const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-		const hashArray = Array.from(new Uint8Array(hashBuffer));
-		return btoa(String.fromCharCode(...hashArray));
+		const key = await crypto.subtle.importKey(
+			'raw',
+			encoder.encode(password),
+			'PBKDF2',
+			false,
+			['deriveBits']
+		);
+		const hashBuffer = await crypto.subtle.deriveBits({
+			name: 'PBKDF2',
+			hash: 'SHA-256',
+			salt: encoder.encode(salt),
+			iterations: PBKDF2_ITERATIONS
+		}, key, 256);
+		return `${PBKDF2_PREFIX}$${PBKDF2_ITERATIONS}$${toBase64(hashBuffer)}`;
 	},
 
 	async verifyPassword(inputPassword, salt, storedHash) {
-		const hash = await this.genHashPassword(inputPassword, salt);
-		return hash === storedHash;
+		if (storedHash?.startsWith(`${PBKDF2_PREFIX}$`)) {
+			const [, iterationsText, expected] = storedHash.split('$');
+			const iterations = Number(iterationsText);
+			if (!Number.isSafeInteger(iterations) || iterations < 100000 || !expected) return false;
+			const key = await crypto.subtle.importKey('raw', encoder.encode(inputPassword), 'PBKDF2', false, ['deriveBits']);
+			const hashBuffer = await crypto.subtle.deriveBits({
+				name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations
+			}, key, 256);
+			return constantTimeEqual(toBase64(hashBuffer), expected);
+		}
+
+		// 舊版相容：登入成功後由 login-service 自動升級成 PBKDF2。
+		const legacyBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(salt + inputPassword));
+		return constantTimeEqual(toBase64(legacyBuffer), storedHash || '');
 	},
 
-	genRandomPwd(length = 8) {
+	isLegacyHash(hash) {
+		return !hash?.startsWith(`${PBKDF2_PREFIX}$`);
+	},
+
+	genRandomPwd(length = 16) {
 		const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-		let result = '';
-		for (let i = 0; i < length; i++) {
-			result += chars.charAt(Math.floor(Math.random() * chars.length));
-		}
-		return result;
+		const values = new Uint8Array(length);
+		crypto.getRandomValues(values);
+		return Array.from(values, value => chars[value % chars.length]).join('');
 	}
 };
 

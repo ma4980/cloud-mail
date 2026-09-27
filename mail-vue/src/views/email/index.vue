@@ -29,7 +29,7 @@ import {useSettingStore} from "@/store/setting.js";
 import emailScroll from "@/components/email-scroll/index.vue"
 import {emailList, emailDelete, emailLatest, emailRead} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
-import {defineOptions, h, onMounted, reactive, ref, watch} from "vue";
+import {defineOptions, h, onMounted, onUnmounted, reactive, ref, watch} from "vue";
 import {sleep} from "@/utils/time-utils.js";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
@@ -73,14 +73,20 @@ function jumpContent(email) {
 }
 
 const existIds = new Set();
+let polling = true;
+let failureDelay = 0;
+
+onUnmounted(() => {
+  polling = false;
+});
 
 async function latest() {
-  while (true) {
+  while (polling) {
 
     let autoRefresh = settingStore.settings.autoRefresh;
-    await sleep(autoRefresh > 1 ? autoRefresh * 1000 : 3000);
+    await sleep((autoRefresh > 1 ? autoRefresh * 1000 : 3000) + failureDelay);
 
-    if (route.name !== 'email') {
+    if (!polling || document.hidden || route.name !== 'email') {
       continue;
     }
 
@@ -92,6 +98,7 @@ async function latest() {
         const allReceive = scroll.value.latestEmail?.allReceive
         const curTimeSort = params.timeSort
         let list = []
+		failureDelay = 0
 
         //确保发起请求时最后一个邮件是当前账号的,或者
         if (accountId === scroll.value.latestEmail?.reqAccountId) {
@@ -122,6 +129,7 @@ async function latest() {
 
         }
       } catch (e) {
+		failureDelay = Math.min(failureDelay ? failureDelay * 2 : 2000, 60000)
         if (e.code === 401 || e.code === 403) {
           settingStore.settings.autoRefresh = 0;
         }

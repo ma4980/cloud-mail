@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Cloud Mail">
+  <defs>
+    <linearGradient id="background" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#42A5FF"/>
+      <stop offset="1" stop-color="#1769D2"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#background)"/>
+  <path d="M116 157c-17.7 0-32 14.3-32 32v142c0 17.7 14.3 32 32 32h280c17.7 0 32-14.3 32-32V189c0-17.7-14.3-32-32-32H116Z" fill="#fff"/>
+  <path d="m105 187 133.8 103.8a28 28 0 0 0 34.4 0L407 187" fill="none" stroke="#1874DB" stroke-linecap="round" stroke-linejoin="round" stroke-width="26"/>
+  <path d="m102 339 102-94M410 339l-102-94" fill="none" stroke="#D8ECFF" stroke-linecap="round" stroke-width="20"/>
+</svg>

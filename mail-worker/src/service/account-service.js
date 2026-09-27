@@ -116,12 +116,8 @@ const accountService = {
 		let { accountId, size, lastSort } = params;
 
 		accountId = Number(accountId);
-		size = Number(size);
+		size = Math.min(Math.max(Number(size) || 20, 1), 30);
 		lastSort = Number(lastSort);
-
-		if (size > 30) {
-			size = 30;
-		}
 
 		if (!accountId) {
 			accountId = 0;
@@ -237,12 +233,8 @@ const accountService = {
 
 		userId = Number(userId)
 
-		num = Number(num)
-		size = Number(size)
-
-		if (size > 30) {
-			size = 30;
-		}
+		num = Math.max(Number(num) || 1, 1)
+		size = Math.min(Math.max(Number(size) || 20, 1), 30)
 
 		num = (num - 1) * size;
 

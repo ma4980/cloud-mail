@@ -43,8 +43,8 @@ const publicService = {
 			num = 1
 		}
 
-		size = Number(size);
-		num = Number(num);
+		size = Math.min(Math.max(Number(size) || 20, 1), 100);
+		num = Math.max(Number(num) || 1, 1);
 
 		num = (num - 1) * size;
 
@@ -97,7 +97,8 @@ const publicService = {
 	async addUser(c, params) {
 		const { list } = params;
 
-		if (list.length === 0) return;
+		if (!Array.isArray(list) || list.length === 0) return;
+		if (list.length > 100) throw new BizError('每次最多新增 100 位使用者。 Maximum 100 users per request.');
 
 		for (const emailRow of list) {
 			if (!verifyUtils.isEmail(emailRow.email)) {
@@ -136,13 +137,14 @@ const publicService = {
 			}
 
 			const userSql = `INSERT INTO user (email, password, salt, type, os, browser, active_ip, create_ip, device, active_time, create_time)
-			VALUES ('${email}', '${hash}', '${salt}', '${type}', '${os}', '${browser}', '${activeIp}', '${activeIp}', '${device}', '${activeTime}', '${activeTime}')`
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-			const accountSql = `INSERT INTO account (email, name, user_id)
-			VALUES ('${email}', '${emailUtils.getName(email)}', 0);`;
+			const accountSql = `INSERT INTO account (email, name, user_id) VALUES (?, ?, 0);`;
 
-			userList.push(c.env.db.prepare(userSql));
-			userList.push(c.env.db.prepare(accountSql));
+			userList.push(c.env.db.prepare(userSql).bind(
+				email, hash, salt, type, os, browser, activeIp, activeIp, device, activeTime, activeTime
+			));
+			userList.push(c.env.db.prepare(accountSql).bind(email, emailUtils.getName(email)));
 
 		}
 

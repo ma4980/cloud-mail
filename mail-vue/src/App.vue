@@ -1,6 +1,7 @@
 <template>
   <el-config-provider :locale="elementLocale">
     <router-view />
+    <PwaInstall/>
   </el-config-provider>
 </template>
 <script setup>
@@ -10,6 +11,7 @@ import {useSettingStore} from "@/store/setting.js";
 const settingStore = useSettingStore()
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import zhTw from 'element-plus/es/locale/lang/zh-tw';
+import PwaInstall from '@/components/pwa-install/index.vue'
 import('@/icons/index.js')
 const { locale } = useI18n()
 const elementLocale = computed(() => {

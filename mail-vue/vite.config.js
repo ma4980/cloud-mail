@@ -17,25 +17,58 @@ export default defineConfig(({mode}) => {
         base: env.VITE_STATIC_URL || '/',
         plugins: [vue(),
             VitePWA({
+                registerType: 'autoUpdate',
                 injectRegister: 'script-defer',
                 manifest: {
-                    name: env.VITE_PWA_NAME,
-                    short_name: env.VITE_PWA_NAME,
+                    id: '/',
+                    name: env.VITE_PWA_NAME || 'Cloud Mail',
+                    short_name: env.VITE_PWA_NAME || 'Cloud Mail',
+                    description: '可安裝、支援繁體中文的 Cloud Mail 郵件服務',
+                    lang: 'zh-TW',
+                    start_url: '/',
+                    scope: '/',
+                    display: 'standalone',
+                    orientation: 'any',
                     background_color: '#FFFFFF',
-                    theme_color: '#FFFFFF',
+                    theme_color: '#1976D2',
+                    categories: ['productivity', 'utilities'],
                     icons: [
                         {
                             src: 'mail-pwa.png',
                             sizes: '192x192',
                             type: 'image/png',
+                            purpose: 'any'
+                        },
+                        {
+                            src: 'app-icon.svg',
+                            sizes: 'any',
+                            type: 'image/svg+xml',
+                            purpose: 'any maskable'
                         }
                     ],
                 },
                 workbox: {
                     disableDevLogs: true,
-                    globPatterns: [],
-                    runtimeCaching: [],
-                    navigateFallback: null,
+                    globPatterns: [
+                        'index.html',
+                        'registerSW.js',
+                        'manifest.webmanifest',
+                        'assets/**/*.{js,css,png,svg}',
+                        'mail*.png',
+                        'app-icon.svg'
+                    ],
+                    navigateFallback: '/index.html',
+                    navigateFallbackDenylist: [/^\/api\//, /^\/attachments\//, /^\/static\//],
+                    runtimeCaching: [
+                        {
+                            urlPattern: /^https:\/\/api\.iconify\.design\//,
+                            handler: 'CacheFirst',
+                            options: {
+                                cacheName: 'iconify-icons',
+                                expiration: {maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30}
+                            }
+                        }
+                    ],
                     cleanupOutdatedCaches: true,
                 }
             }),
@@ -55,7 +88,18 @@ export default defineConfig(({mode}) => {
             target: 'es2022',
             outDir: env.VITE_OUT_DIR || 'dist',
             emptyOutDir: true,
-            assetsInclude: ['**/*.json']
+            assetsInclude: ['**/*.json'],
+            rollupOptions: {
+                output: {
+                    manualChunks(id) {
+                        if (!id.includes('node_modules')) return
+                        if (id.includes('element-plus')) return 'element-plus'
+                        if (id.includes('echarts')) return 'echarts'
+                        if (id.includes('tinymce')) return 'editor'
+                        if (id.includes('/vue/') || id.includes('vue-router') || id.includes('pinia')) return 'vue-core'
+                    }
+                }
+            }
         }
     }
 })

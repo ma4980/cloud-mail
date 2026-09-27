@@ -6,6 +6,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import DOMPurify from 'dompurify'
 
 const props = defineProps({
   html: {
@@ -21,13 +22,17 @@ let shadowRoot = null
 function updateContent() {
   if (!shadowRoot) return;
 
-  // 1. 提取 <body> 的 style 属性（如果存在）
-  const bodyStyleRegex = /<body[^>]*style="([^"]*)"[^>]*>/i;
-  const bodyStyleMatch = props.html.match(bodyStyleRegex);
-  const bodyStyle = bodyStyleMatch ? bodyStyleMatch[1] : '';
-
-  // 2. 移除 <body> 标签（保留内容）
-  const cleanedHtml = props.html.replace(/<\/?body[^>]*>/gi, '');
+  const sanitizedDocument = DOMPurify.sanitize(props.html, {
+    WHOLE_DOCUMENT: true,
+    RETURN_DOM: true,
+    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'select', 'meta', 'base'],
+    FORBID_ATTR: ['srcdoc'],
+    ALLOW_UNKNOWN_PROTOCOLS: false
+  });
+  const sanitizedBody = sanitizedDocument.querySelector('body');
+  const bodyStyle = sanitizedBody?.getAttribute('style')
+    ?.replace(/(?:url|expression|@import)\s*\([^)]*\)/gi, '') || '';
+  const cleanedHtml = sanitizedBody?.innerHTML || '';
 
   // 3. 将 body 的 style 应用到 .shadow-content
   shadowRoot.innerHTML = `
@@ -63,7 +68,6 @@ function updateContent() {
         width: fit-content;
         height: fit-content;
         min-width: 100%;
-        ${bodyStyle ? bodyStyle : ''} /* 注入 body 的 style */
       }
 
       img:not(table img) {
@@ -76,6 +80,8 @@ function updateContent() {
       ${cleanedHtml}
     </div>
   `;
+
+  if (bodyStyle) shadowRoot.querySelector('.shadow-content')?.setAttribute('style', bodyStyle);
 }
 
 function autoScale() {

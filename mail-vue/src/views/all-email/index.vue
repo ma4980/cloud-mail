@@ -90,7 +90,7 @@
 <script setup>
 import {starAdd, starCancel} from "@/request/star.js";
 import emailScroll from "@/components/email-scroll/index.vue"
-import {computed, defineOptions, reactive, ref, watch, onMounted} from "vue";
+import {computed, defineOptions, reactive, ref, watch, onMounted, onUnmounted} from "vue";
 import {useEmailStore} from "@/store/email.js";
 import {
   allEmailList,
@@ -124,6 +124,13 @@ const clearLoading = ref(false)
 onMounted(() => {
   latest();
 })
+
+let polling = true;
+let failureDelay = 0;
+
+onUnmounted(() => {
+  polling = false;
+});
 
 const openSelect = () => {
   mySelect.value.toggleMenu()
@@ -296,11 +303,15 @@ function getEmailList(emailId, size) {
 
 async function latest() {
 
-  while (true) {
+  while (polling) {
 
     let autoRefresh = settingStore.settings.autoRefresh;
 
-    await sleep(autoRefresh > 1 ? autoRefresh * 1000 : 3000);
+    await sleep((autoRefresh > 1 ? autoRefresh * 1000 : 3000) + failureDelay);
+
+    if (!polling || document.hidden) {
+      continue
+    }
 
     const latestId = sysEmailScroll.value.latestEmail?.emailId
 
@@ -325,6 +336,7 @@ async function latest() {
 
       const curTimeSort = params.timeSort
       let list = await allEmailLatest(latestId)
+	  failureDelay = 0
 
       if (list.length === 0) {
         continue
@@ -349,6 +361,7 @@ async function latest() {
       }
 
     } catch (e) {
+	  failureDelay = Math.min(failureDelay ? failureDelay * 2 : 2000, 60000)
       if (e.code === 401 || e.code === 403) {
         settingStore.settings.autoRefresh = 0;
       }

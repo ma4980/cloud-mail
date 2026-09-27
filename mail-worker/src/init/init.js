@@ -5,33 +5,33 @@ import {emailConst} from "../const/entity-const";
 const dbInit = {
 	async init(c) {
 
-		const secret = c.req.param('secret');
+		const authorization = c.req.header('Authorization') || '';
+		const secret = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
 
 		if (secret !== c.env.jwt_secret) {
-			return c.text('❌ JWT secret mismatch');
+			return c.text('❌ JWT secret mismatch', 401);
 		}
 
-		await this.intDB(c);
-		await this.v1_1DB(c);
-		await this.v1_2DB(c);
-		await this.v1_3DB(c);
-		await this.v1_3_1DB(c);
-		await this.v1_4DB(c);
-		await this.v1_5DB(c);
-		await this.v1_6DB(c);
-		await this.v1_7DB(c);
-		await this.v2DB(c);
-		await this.v2_3DB(c);
-		await this.v2_4DB(c);
-		await this.v2_5DB(c);
-		await this.v2_6DB(c);
-		await this.v2_7DB(c);
-		await this.v2_8DB(c);
-		await this.v2_9DB(c);
-		await this.v3_0DB(c);
-		await this.v3_1DB(c);
-		await this.v3_2DB(c);
-		await this.v3_3DB(c);
+		await c.env.db.prepare(`CREATE TABLE IF NOT EXISTS schema_migrations (
+			version TEXT PRIMARY KEY NOT NULL,
+			applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`).run();
+
+		const migrations = [
+			['base', 'intDB'], ['1.1', 'v1_1DB'], ['1.2', 'v1_2DB'], ['1.3', 'v1_3DB'],
+			['1.3.1', 'v1_3_1DB'], ['1.4', 'v1_4DB'], ['1.5', 'v1_5DB'], ['1.6', 'v1_6DB'],
+			['1.7', 'v1_7DB'], ['2.0', 'v2DB'], ['2.3', 'v2_3DB'], ['2.4', 'v2_4DB'],
+			['2.5', 'v2_5DB'], ['2.6', 'v2_6DB'], ['2.7', 'v2_7DB'], ['2.8', 'v2_8DB'],
+			['2.9', 'v2_9DB'], ['3.0', 'v3_0DB'], ['3.1', 'v3_1DB'], ['3.2', 'v3_2DB'],
+			['3.3', 'v3_3DB']
+		];
+
+		for (const [version, method] of migrations) {
+			const applied = await c.env.db.prepare('SELECT version FROM schema_migrations WHERE version = ?').bind(version).first();
+			if (applied) continue;
+			await this[method](c);
+			await c.env.db.prepare('INSERT INTO schema_migrations (version) VALUES (?)').bind(version).run();
+		}
 		await settingService.refresh(c);
 		return c.text('success');
 	},

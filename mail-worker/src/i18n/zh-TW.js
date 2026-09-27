@@ -32,7 +32,7 @@ const zhTw = {
 	emailLengthLimit: '信箱長度超過限制',
 	minEmailPrefix: '信箱名稱至少需要 {{msg}} 個字元',
 	banEmailPrefix: '信箱名稱包含不允許的字元',
-	pwdMinLength: '密碼至少需要 6 個字元',
+	pwdMinLength: '密碼至少需要 10 個字元',
 	notEmailDomain: '信箱網域不正確',
 	emptyRegKey: '註冊碼不能為空',
 	notExistRegKey: '註冊碼不存在',

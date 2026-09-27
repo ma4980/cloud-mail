@@ -23,6 +23,10 @@ import domainUtils from '../utils/domain-uitls';
 import account from "../entity/account";
 import { att } from '../entity/att';
 import telegramService from './telegram-service';
+import { v4 as uuidv4 } from 'uuid';
+
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const MAX_TOTAL_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 
 const emailService = {
 
@@ -30,7 +34,7 @@ const emailService = {
 
 		let { emailId, type, accountId, size, timeSort, allReceive, full } = params;
 
-		size = Number(size);
+		size = Math.min(Math.max(Number(size) || 10, 1), 50);
 		type = Number(type);
 		emailId = Number(emailId) || 0;
 		timeSort = Number(timeSort);
@@ -46,19 +50,11 @@ const emailService = {
 			throw new BizError(t('emptyAccountId'));
 		}
 
-		if (isNaN(size)) {
-			size = 10;
-		}
-
 		if (isNaN(full)) {
 			full = 1;
 		}
 
 		full = full === 1;
-
-		if (size > 50) {
-			size = 50;
-		}
 
 		if (isNaN(allReceive)) {
 			let accountRow = await accountService.selectById(c, accountId);
@@ -264,6 +260,8 @@ const emailService = {
 		const { resendTokens, r2Domain, send, domainList } = await settingService.query(c);
 
 		let { imageDataList, html } = await attService.toImageUrlHtml(c, content);
+		const allAttachments = [...imageDataList, ...attachments];
+		this.validateAttachments(allAttachments);
 
 		//判断是否关闭发件功能
 		if (send === settingConst.send.CLOSE) {
@@ -368,7 +366,7 @@ const emailService = {
 					subject,
 					text,
 					html,
-					attachments: [...imageDataList, ...attachments],
+					attachments: allAttachments,
 					sendType,
 					messageId: emailRow.messageId
 				});
@@ -380,9 +378,10 @@ const emailService = {
 					subject,
 					text,
 					html,
-					attachments: [...imageDataList, ...attachments],
+					attachments: allAttachments,
 					sendType,
-					messageId: emailRow.messageId
+					messageId: emailRow.messageId,
+					requestId: params.requestId
 				});
 			}
 
@@ -527,7 +526,36 @@ const emailService = {
 			};
 		}
 
-		return await resend.emails.send(sendForm);
+		const idempotencyKey = /^[a-zA-Z0-9_-]{8,100}$/.test(params.requestId || '')
+			? `cloud-mail-${params.requestId}`
+			: `cloud-mail-${uuidv4()}`;
+		return await resend.emails.send(sendForm, { idempotencyKey });
+	},
+
+	validateAttachments(attachments = []) {
+		if (attachments.length > 20) {
+			throw new BizError('附件總數不得超過 20 個。 Too many attachments.');
+		}
+		let total = 0;
+		for (const attachment of attachments) {
+			const content = attachment?.content;
+			let size = Number(attachment?.size) || 0;
+			if (!size && typeof content === 'string') {
+				const base64 = content.includes(',') ? content.slice(content.indexOf(',') + 1) : content;
+				size = Math.floor(base64.length * 0.75);
+			} else if (!size && content?.byteLength !== undefined) {
+				size = content.byteLength;
+			} else if (!size && content?.size !== undefined) {
+				size = content.size;
+			}
+			if (size > MAX_ATTACHMENT_BYTES) {
+				throw new BizError('單一附件不得超過 10 MB。 Attachment exceeds 10 MB.');
+			}
+			total += size;
+		}
+		if (total > MAX_TOTAL_ATTACHMENT_BYTES) {
+			throw new BizError('附件總容量不得超過 25 MB。 Attachments exceed 25 MB.');
+		}
 	},
 
 	async toCloudflareAttachments(attachments) {
@@ -899,21 +927,13 @@ const emailService = {
 
 		let { emailId, size, name, subject, accountEmail, userEmail, type, timeSort, full } = params;
 
-		size = Number(size);
+		size = Math.min(Math.max(Number(size) || 10, 1), 50);
 		emailId = Number(emailId) || 0;
 		timeSort = Number(timeSort);
 		full = Number(full);
 
 		if (type === undefined) {
 			type = 'receive';
-		}
-
-		if (isNaN(size)) {
-			size = 10;
-		}
-
-		if (size > 50) {
-			size = 50;
 		}
 
 		if (isNaN(full)) {

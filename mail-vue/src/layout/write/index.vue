@@ -94,7 +94,7 @@
 </template>
 <script setup>
 import tinyEditor from '@/components/tiny-editor/index.vue'
-import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} from "vue";
+import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, watch} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend} from "@/request/email.js";
@@ -156,7 +156,19 @@ const form = reactive({
   text: '',
   emailId: 0,
   attachments: [],
+  requestId: '',
   draftId: null,
+})
+
+watch(() => [
+  form.accountId,
+  form.name,
+  form.subject,
+  form.content,
+  form.receiveEmail.join(','),
+  form.attachments.map(item => `${item.filename}:${item.size}`).join(',')
+], () => {
+  if (!sending) form.requestId = ''
 })
 
 const selectRecipientList = ref([])
@@ -349,6 +361,8 @@ async function sendEmail() {
 
   sending = true
 
+  form.requestId ||= crypto.randomUUID()
+
   show.value = false
 
   emailSend(form, (e) => {
@@ -414,6 +428,7 @@ function resetForm() {
   form.content = ''
   form.manyType = null
   form.attachments = []
+  form.requestId = ''
   form.sendType = ''
   form.emailId = 0
   form.draftId = null

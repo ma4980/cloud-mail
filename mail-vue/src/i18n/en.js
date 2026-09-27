@@ -363,6 +363,11 @@ const en = {
     bindEmail: 'Link email',
     bind: 'Link',
     bindEmailPrompt: 'Please register and link an email address first',
+    installApp: 'Install App',
+    iosInstallIntro: 'Add Cloud Mail to your iPhone or iPad Home Screen:',
+    iosInstallStep1: 'Open this website in Safari.',
+    iosInstallStep2: 'Tap the Share button in the toolbar.',
+    iosInstallStep3: 'Choose Add to Home Screen, then tap Add.',
 }
 
 export default en

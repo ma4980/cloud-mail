@@ -56,12 +56,15 @@ const userService = {
 	},
 
 
-	async resetPassword(c, params, userId) {
+	async resetPassword(c, params, userId, enforcePolicy = true) {
 
 		const { password } = params;
 
-		if (password.length < 6) {
+		if (enforcePolicy && password.length < 10) {
 			throw new BizError(t('pwdMinLength'));
+		}
+		if (enforcePolicy && password.length > 128) {
+			throw new BizError(t('pwdLengthLimit'));
 		}
 		const { salt, hash } = await cryptoUtils.hashPassword(password);
 		await orm(c).update(user).set({ password: hash, salt: salt }).where(eq(user.userId, userId)).run();
@@ -120,22 +123,10 @@ const userService = {
 
 		let { num, size, email, timeSort, status } = params;
 
-		size = Number(size);
-		num = Number(num);
+		size = Math.min(Math.max(Number(size) || 50, 1), 50);
+		num = Math.max(Number(num) || 1, 1);
 		timeSort = Number(timeSort);
 		params.isDel = Number(params.isDel);
-
-		if (isNaN(size)) {
-			size = 50;
-		}
-
-		if (isNaN(num)) {
-			num = 1;
-		}
-
-		if (size > 50) {
-			size = 50;
-		}
 
 		num = (num - 1) * size;
 

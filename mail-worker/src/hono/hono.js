@@ -4,7 +4,25 @@ const app = new Hono();
 import result from '../model/result';
 import { cors } from 'hono/cors';
 
-app.use('*', cors());
+app.use('*', cors({
+	origin: (origin, c) => {
+		if (!origin) return '';
+		const sameOrigin = new URL(c.req.url).origin;
+		const extraOrigins = String(c.env.cors_origins || '').split(',').map(item => item.trim()).filter(Boolean);
+		return origin === sameOrigin || extraOrigins.includes(origin) ? origin : '';
+	},
+	allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+	allowHeaders: ['Authorization', 'Content-Type'],
+	maxAge: 86400
+}));
+
+app.use('*', async (c, next) => {
+	await next();
+	c.header('X-Content-Type-Options', 'nosniff');
+	c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+	c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+	c.header('Content-Security-Policy', "frame-ancestors 'none'; base-uri 'self'; object-src 'none'");
+});
 
 app.onError((err, c) => {
 	if (err.name === 'BizError') {

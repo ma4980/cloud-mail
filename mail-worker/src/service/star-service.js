@@ -44,7 +44,7 @@ const starService = {
 	async list(c, params, userId) {
 		let { emailId, size, full } = params;
 		emailId = Number(emailId) || 0;
-		size = Number(size);
+		size = Math.min(Math.max(Number(size) || 20, 1), 50);
 		full = Number(full) === 1;
 		const columns = full ? emailListColumns : emailBriefColumns;
 
