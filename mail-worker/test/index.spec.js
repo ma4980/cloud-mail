@@ -7,7 +7,7 @@ describe('credential security', () => {
 		const password = 'correct horse battery staple';
 		const { salt, hash } = await cryptoUtils.hashPassword(password);
 
-		expect(hash).toMatch(/^pbkdf2-sha256\$310000\$/);
+		expect(hash).toMatch(/^pbkdf2-sha256\$100000\$/);
 		expect(await cryptoUtils.verifyPassword(password, salt, hash)).toBe(true);
 		expect(await cryptoUtils.verifyPassword('wrong password', salt, hash)).toBe(false);
 	});
@@ -20,6 +20,12 @@ describe('credential security', () => {
 
 		expect(cryptoUtils.isLegacyHash(legacyHash)).toBe(true);
 		expect(await cryptoUtils.verifyPassword(password, salt, legacyHash)).toBe(true);
+	});
+
+	it('rejects unsupported PBKDF2 work factors without calling Web Crypto', async () => {
+		const unsupportedHash = `pbkdf2-sha256$310000$${btoa('placeholder')}`;
+
+		expect(await cryptoUtils.verifyPassword('password', 'salt', unsupportedHash)).toBe(false);
 	});
 });
 

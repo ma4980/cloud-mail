@@ -1,5 +1,8 @@
 const encoder = new TextEncoder();
-const PBKDF2_ITERATIONS = 310000;
+// Cloudflare Workers Web Crypto currently rejects PBKDF2 iteration counts
+// above 100,000. Keep the work factor at the runtime's supported maximum.
+const PBKDF2_ITERATIONS = 100000;
+const PBKDF2_MAX_ITERATIONS = 100000;
 const PBKDF2_PREFIX = 'pbkdf2-sha256';
 
 const toBase64 = (buffer) => btoa(String.fromCharCode(...new Uint8Array(buffer)));
@@ -49,7 +52,12 @@ const saltHashUtils = {
 		if (storedHash?.startsWith(`${PBKDF2_PREFIX}$`)) {
 			const [, iterationsText, expected] = storedHash.split('$');
 			const iterations = Number(iterationsText);
-			if (!Number.isSafeInteger(iterations) || iterations < 100000 || !expected) return false;
+			if (
+				!Number.isSafeInteger(iterations) ||
+				iterations < 100000 ||
+				iterations > PBKDF2_MAX_ITERATIONS ||
+				!expected
+			) return false;
 			const key = await crypto.subtle.importKey('raw', encoder.encode(inputPassword), 'PBKDF2', false, ['deriveBits']);
 			const hashBuffer = await crypto.subtle.deriveBits({
 				name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations
