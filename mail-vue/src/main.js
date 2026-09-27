@@ -11,6 +11,9 @@ import perm from "@/perm/perm.js";
 const pinia = createPinia().use(piniaPersistedState)
 import i18n from "@/i18n/index.js";
 const app = createApp(App).use(pinia)
+window.setTimeout(() => {
+    document.getElementById('loading-first')?.remove()
+}, 8000)
 
 try {
     await init()

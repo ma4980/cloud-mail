@@ -5,7 +5,8 @@ import {useSettingStore} from "@/store/setting.js";
 
 let http = axios.create({
     baseURL: import.meta.env.VITE_BASE_URL,
-    withCredentials: true
+    withCredentials: true,
+    timeout: 15000
 });
 
 http.interceptors.request.use(config => {
