@@ -107,14 +107,11 @@ export default defineConfig(({mode}) => {
                             if (normalized.includes('/echarts/lib/component/')) return 'charts-components'
                             return 'charts-core'
                         }
-                        if (normalized.includes('/element-plus/')) {
-                            const match = normalized.match(/\/element-plus\/es\/components\/([^/]+)/)
-                            const component = match?.[1]
-                            if (['table', 'table-v2', 'tree', 'tree-select', 'pagination'].includes(component)) return 'element-data'
-                            if (['dialog', 'drawer', 'message', 'message-box', 'notification', 'popover', 'tooltip', 'popper'].includes(component)) return 'element-overlay'
-                            if (['input', 'input-number', 'select', 'select-v2', 'form', 'switch', 'radio', 'checkbox', 'date-picker', 'time-picker', 'upload'].includes(component)) return 'element-form'
-                            return component ? 'element-ui' : 'element-core'
-                        }
+                        // Element Plus components share internal symbols across component
+                        // boundaries. Splitting them into several manual chunks can create a
+                        // circular chunk graph and trigger a temporal-dead-zone error before
+                        // Vue mounts (for example, "Cannot access 'Ao' before initialization").
+                        if (normalized.includes('/element-plus/')) return 'element-plus'
                         if (id.includes('@iconify')) return 'icons'
                         if (id.includes('dompurify')) return 'mail-sanitizer'
                         if (id.includes('/vue/') || id.includes('vue-router') || id.includes('vue-i18n') || id.includes('pinia')) return 'vue-core'
