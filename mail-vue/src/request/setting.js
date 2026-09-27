@@ -8,6 +8,10 @@ export function settingQuery() {
     return http.get('/setting/query')
 }
 
+export function testWebhook() {
+    return http.post('/setting/testWebhook')
+}
+
 export function websiteConfig() {
     return http.get('/setting/websiteConfig')
 }

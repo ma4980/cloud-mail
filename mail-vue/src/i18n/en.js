@@ -179,6 +179,8 @@ const en = {
     webhookSecret: 'Secret (Optional)',
     webhookRetry: 'Retries',
     webhookFormat: 'Payload format',
+    webhookTest: 'Test notification',
+    webhookTestSuccess: 'Test notification sent successfully',
     forwardingRules: 'Forwarding Rules',
     forwardAll: 'All',
     rules: 'Rules',

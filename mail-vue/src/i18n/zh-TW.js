@@ -179,6 +179,8 @@ const zh = {
     webhookSecret: '金鑰（可選）',
     webhookRetry: '重試次數',
     webhookFormat: '格式說明',
+    webhookTest: '測試通知',
+    webhookTestSuccess: '測試通知已成功傳送',
     forwardingRules: '轉發規則',
     forwardAll: '全部轉發',
     rules: '規則轉發',

@@ -101,9 +101,14 @@ const webhookService = {
 		webhookUrl = domainUtils.toOssDomain(webhookUrl);
 
 		if (!webhookUrl) {
-			return;
+			return { success: false, error: '尚未設定 Webhook 網址' };
 		}
 		webhookUrl = validateWebhookUrl(webhookUrl);
+		const isDiscord = isDiscordWebhookUrl(webhookUrl);
+		const requestUrl = new URL(webhookUrl);
+		if (isDiscord) {
+			requestUrl.searchParams.set('wait', 'true');
+		}
 
 		retry = Number(retry);
 		if (isNaN(retry) || retry < 0) {
@@ -111,10 +116,12 @@ const webhookService = {
 		}
 
 		const headers = {
-			'Content-Type': 'application/json'
+			'Content-Type': 'application/json',
+			'Accept': 'application/json',
+			'User-Agent': 'CloudMail/1.0 (+https://github.com/ma4980/cloud-mail)'
 		};
 
-		if (webhookSecret) {
+		if (webhookSecret && !isDiscord) {
 			headers['Authorization'] = webhookSecret;
 		}
 
@@ -124,7 +131,7 @@ const webhookService = {
 
 		for (let i = 0; i <= retry; i++) {
 			try {
-				const res = await fetch(webhookUrl, {
+				const res = await fetch(requestUrl.toString(), {
 					method: 'POST',
 					headers,
 					body,
@@ -133,7 +140,7 @@ const webhookService = {
 				});
 
 				if (res.ok) {
-					return;
+					return { success: true, status: res.status };
 				}
 
 				lastError = `status: ${res.status} response: ${(await res.text()).slice(0, 1000)}`;
@@ -144,6 +151,7 @@ const webhookService = {
 		}
 
 		console.error(`Webhook 傳送失敗: ${lastError}`);
+		return { success: false, error: lastError };
 	}
 
 };

@@ -703,6 +703,9 @@ Authorization: &lt;secret&gt;</pre>
                 <span>{{ $t('webhookFormat') }}</span>
                 <Icon class="webhook-format-icon" :class="{ open: webhookFormatShow }" icon="mingcute:down-small-fill" width="18" height="18"/>
               </div>
+              <el-button :loading="webhookTesting" @click="sendWebhookTest">
+                {{ $t('webhookTest') }}
+              </el-button>
               <el-button :loading="settingLoading" type="primary" @click="webhookSave">
                 {{ $t('save') }}
               </el-button>
@@ -933,7 +936,7 @@ Authorization: &lt;secret&gt;</pre>
 
 <script setup>
 import {computed, defineOptions, nextTick, reactive, ref} from "vue";
-import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet} from "@/request/setting.js";
+import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet, testWebhook} from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
@@ -1074,6 +1077,7 @@ const webhookStatus = ref(1)
 const webhookRetry = ref(0)
 const webhookSecret = ref('')
 const webhookFormatShow = ref(false)
+const webhookTesting = ref(false)
 const webhookPayloadExample = `{
   "emailId": 1,
   "sendEmail": "hello@example.com",
@@ -1415,6 +1419,20 @@ function webhookSave() {
     webhookSecret: webhookSecret.value.trim()
   }
   editSetting(form)
+}
+
+function sendWebhookTest() {
+  if (webhookTesting.value) return
+  webhookTesting.value = true
+  testWebhook().then(() => {
+    ElMessage({
+      message: t('webhookTestSuccess'),
+      type: 'success',
+      plain: true
+    })
+  }).finally(() => {
+    webhookTesting.value = false
+  })
 }
 
 

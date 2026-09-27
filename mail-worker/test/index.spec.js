@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import cryptoUtils from '../src/utils/crypto-utils.js';
 import jwtUtils from '../src/utils/jwt-utils.js';
-import { buildWebhookPayload, isDiscordWebhookUrl } from '../src/service/webhook-service.js';
+import webhookService, { buildWebhookPayload, isDiscordWebhookUrl } from '../src/service/webhook-service.js';
 
 describe('credential security', () => {
 	it('hashes new passwords with versioned PBKDF2 and verifies them', async () => {
@@ -81,5 +81,19 @@ describe('webhook payloads', () => {
 
 		expect(payload.emailId).toBe(42);
 		expect(payload.embeds).toBeUndefined();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('waits for Discord to confirm the notification', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+		const delivery = await webhookService.sendEmail({}, email, 'https://discord.com/api/webhooks/123/token');
+		const [url, options] = fetchMock.mock.calls[0];
+
+		expect(delivery).toEqual({ success: true, status: 200 });
+		expect(url).toContain('wait=true');
+		expect(options.headers['User-Agent']).toContain('CloudMail/1.0');
 	});
 });
