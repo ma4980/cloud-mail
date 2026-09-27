@@ -368,6 +368,17 @@ const en = {
     iosInstallStep1: 'Open this website in Safari.',
     iosInstallStep2: 'Tap the Share button in the toolbar.',
     iosInstallStep3: 'Choose Add to Home Screen, then tap Add.',
+    androidInstallIntro: 'Install Cloud Mail on Android:',
+    androidInstallStep1: 'Open this website in Chrome.',
+    androidInstallStep2: 'Tap the three-dot menu in the top-right corner.',
+    androidInstallStep3: 'Choose Install app or Add to Home screen.',
+    enableMailNotifications: 'Enable new mail notifications',
+    disableMailNotifications: 'Disable new mail notifications',
+    mailNotificationsEnabled: 'New mail notifications are enabled',
+    mailNotificationsDisabled: 'New mail notifications are disabled',
+    mailNotificationsDenied: 'Notification permission was not granted. Enable it in the browser site settings.',
+    mailNotificationsUnsupported: 'This browser does not support mail notifications',
+    newMailNotification: 'You have a new email',
 }
 
 export default en

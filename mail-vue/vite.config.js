@@ -40,6 +40,12 @@ export default defineConfig(({mode}) => {
                             purpose: 'any'
                         },
                         {
+                            src: 'mail-pwa-512.png',
+                            sizes: '512x512',
+                            type: 'image/png',
+                            purpose: 'any maskable'
+                        },
+                        {
                             src: 'app-icon.svg',
                             sizes: 'any',
                             type: 'image/svg+xml',
@@ -49,6 +55,7 @@ export default defineConfig(({mode}) => {
                 },
                 workbox: {
                     disableDevLogs: true,
+                    importScripts: ['notification-sw.js'],
                     globPatterns: [
                         'index.html',
                         'registerSW.js',

@@ -5,18 +5,18 @@
       <span>{{ t('installApp') }}</span>
     </button>
 
-    <el-dialog v-model="showIosHelp" :title="t('installApp')" width="min(90vw, 380px)" append-to-body>
+    <el-dialog v-model="showInstallHelp" :title="t('installApp')" width="min(90vw, 380px)" append-to-body>
       <div class="ios-help">
         <img src="/app-icon.svg" alt="Cloud Mail" width="72" height="72">
-        <p>{{ t('iosInstallIntro') }}</p>
+        <p>{{ t(isIos ? 'iosInstallIntro' : 'androidInstallIntro') }}</p>
         <ol>
-          <li>{{ t('iosInstallStep1') }}</li>
-          <li>{{ t('iosInstallStep2') }}</li>
-          <li>{{ t('iosInstallStep3') }}</li>
+          <li>{{ t(isIos ? 'iosInstallStep1' : 'androidInstallStep1') }}</li>
+          <li>{{ t(isIos ? 'iosInstallStep2' : 'androidInstallStep2') }}</li>
+          <li>{{ t(isIos ? 'iosInstallStep3' : 'androidInstallStep3') }}</li>
         </ol>
       </div>
       <template #footer>
-        <el-button type="primary" @click="showIosHelp = false">{{ t('confirm') }}</el-button>
+        <el-button type="primary" @click="showInstallHelp = false">{{ t('confirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -30,7 +30,7 @@ import {useI18n} from 'vue-i18n'
 const {t} = useI18n()
 const deferredPrompt = shallowRef(null)
 const installed = ref(false)
-const showIosHelp = ref(false)
+const showInstallHelp = ref(false)
 const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
 const standaloneQuery = window.matchMedia('(display-mode: standalone)')
 
@@ -48,11 +48,13 @@ const appInstalled = () => {
   deferredPrompt.value = null
 }
 
-const showInstallButton = computed(() => !installed.value && (!!deferredPrompt.value || isIos))
+// Some Android browsers do not emit beforeinstallprompt even when the app can
+// be installed. Keep the action visible and fall back to manual instructions.
+const showInstallButton = computed(() => !installed.value)
 
 async function installApp() {
   if (!deferredPrompt.value) {
-    showIosHelp.value = true
+    showInstallHelp.value = true
     return
   }
 
@@ -81,8 +83,8 @@ onBeforeUnmount(() => {
 .install-button {
   position: fixed;
   right: max(16px, env(safe-area-inset-right));
-  bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
-  z-index: 900;
+  bottom: max(72px, calc(env(safe-area-inset-bottom) + 64px));
+  z-index: 1200;
   display: flex;
   align-items: center;
   gap: 7px;

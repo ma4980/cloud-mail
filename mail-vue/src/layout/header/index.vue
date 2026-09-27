@@ -16,6 +16,12 @@
       <div v-else class="dark-icon icon-item" @click="openDark($event)">
         <Icon icon="solar:moon-linear"/>
       </div>
+      <el-tooltip :content="t(notificationOn ? 'disableMailNotifications' : 'enableMailNotifications')" placement="bottom">
+        <div class="mail-notification icon-item" :class="{enabled: notificationOn}" @click="toggleMailNotifications">
+          <Icon :icon="notificationOn ? 'solar:bell-bold' : 'solar:bell-linear'"/>
+          <span v-if="notificationOn" class="notification-dot"></span>
+        </div>
+      </el-tooltip>
       <div class="notice icon-item" @click="openNotice">
         <Icon icon="streamline-plump:announcement-megaphone"/>
       </div>
@@ -85,6 +91,12 @@ import {useSettingStore} from "@/store/setting.js";
 import {hasPerm} from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
 import {setExtend} from "@/utils/day.js"
+import {
+  disableNotifications,
+  notificationEnabled,
+  notificationSupported,
+  requestNotificationPermission
+} from '@/utils/notification-utils.js'
 
 const {t} = useI18n();
 const route = useRoute();
@@ -94,6 +106,28 @@ const uiStore = useUiStore();
 const logoutLoading = ref(false)
 const userInfoShow = ref(false)
 const userinfoRef = ref({})
+const notificationOn = ref(notificationEnabled())
+
+async function toggleMailNotifications() {
+  if (notificationOn.value) {
+    disableNotifications()
+    notificationOn.value = false
+    ElMessage({message: t('mailNotificationsDisabled'), type: 'info'})
+    return
+  }
+
+  if (!notificationSupported()) {
+    ElMessage({message: t('mailNotificationsUnsupported'), type: 'warning'})
+    return
+  }
+
+  const permission = await requestNotificationPermission()
+  notificationOn.value = permission === 'granted'
+  ElMessage({
+    message: t(notificationOn.value ? 'mailNotificationsEnabled' : 'mailNotificationsDenied'),
+    type: notificationOn.value ? 'success' : 'warning'
+  })
+}
 
 const accountCount = computed(() => {
   return userStore.user.role.accountCount
@@ -436,6 +470,26 @@ function formatName(email) {
   .notice {
     font-size: 22px;
     margin-right: 4px;
+  }
+
+  .mail-notification {
+    position: relative;
+    font-size: 22px;
+  }
+
+  .mail-notification.enabled {
+    color: var(--el-color-primary);
+  }
+
+  .notification-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 7px;
+    height: 7px;
+    border: 1px solid var(--el-bg-color);
+    border-radius: 50%;
+    background: var(--el-color-success);
   }
 
   .dark-icon {

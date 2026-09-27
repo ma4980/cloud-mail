@@ -34,12 +34,15 @@ import {sleep} from "@/utils/time-utils.js";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
 import { useRoute } from 'vue-router'
+import {useI18n} from 'vue-i18n'
+import {notificationEnabled, showMailNotification} from '@/utils/notification-utils.js'
 
 defineOptions({
   name: 'email'
 })
 
 const route = useRoute();
+const {t} = useI18n();
 const emailStore = useEmailStore();
 const accountStore = useAccountStore();
 const settingStore = useSettingStore();
@@ -86,7 +89,7 @@ async function latest() {
     let autoRefresh = settingStore.settings.autoRefresh;
     await sleep((autoRefresh > 1 ? autoRefresh * 1000 : 3000) + failureDelay);
 
-    if (!polling || document.hidden || route.name !== 'email') {
+    if (!polling || route.name !== 'email' || (document.hidden && !notificationEnabled())) {
       continue;
     }
 
@@ -119,6 +122,7 @@ async function latest() {
 
                 existIds.add(email.emailId)
                 scroll.value.addItem(email)
+                await showMailNotification(email, t('newMailNotification'), t('noSubject'))
 
                 await sleep(50)
               }

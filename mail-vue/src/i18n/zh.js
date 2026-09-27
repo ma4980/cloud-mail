@@ -368,5 +368,16 @@ const zh = {
     iosInstallStep1: '使用 Safari 打开此网站。',
     iosInstallStep2: '点击工具栏上的“分享”按钮。',
     iosInstallStep3: '选择“添加到主屏幕”，再点击“添加”。',
+    androidInstallIntro: '在 Android 上安装 Cloud Mail：',
+    androidInstallStep1: '使用 Chrome 打开此网站。',
+    androidInstallStep2: '点击右上角的“⋮”菜单。',
+    androidInstallStep3: '选择“安装应用”或“添加到主屏幕”。',
+    enableMailNotifications: '开启新邮件通知',
+    disableMailNotifications: '关闭新邮件通知',
+    mailNotificationsEnabled: '新邮件通知已开启',
+    mailNotificationsDisabled: '新邮件通知已关闭',
+    mailNotificationsDenied: '通知权限未允许，请在浏览器网站设置中开启',
+    mailNotificationsUnsupported: '此浏览器不支持邮件通知',
+    newMailNotification: '您有一封新邮件',
 }
 export default zh
