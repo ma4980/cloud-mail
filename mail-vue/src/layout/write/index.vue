@@ -402,6 +402,7 @@ async function sendEmail() {
     })
     if (e.code === 401) {
       localStorage.removeItem('token');
+      localStorage.removeItem('cloud-mail-authenticated');
       router.replace('/login');
     }
     show.value = true

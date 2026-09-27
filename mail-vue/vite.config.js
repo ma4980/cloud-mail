@@ -95,7 +95,33 @@ export default defineConfig(({mode}) => {
             target: 'es2022',
             outDir: env.VITE_OUT_DIR || 'dist',
             emptyOutDir: true,
-            assetsInclude: ['**/*.json']
+            assetsInclude: ['**/*.json'],
+            rollupOptions: {
+                output: {
+                    manualChunks(id) {
+                        if (!id.includes('node_modules')) return
+                        const normalized = id.replace(/\\/g, '/')
+                        if (normalized.includes('/zrender/')) return 'charts-renderer'
+                        if (normalized.includes('/echarts/')) {
+                            if (normalized.includes('/echarts/lib/chart/')) return 'charts-types'
+                            if (normalized.includes('/echarts/lib/component/')) return 'charts-components'
+                            return 'charts-core'
+                        }
+                        if (normalized.includes('/element-plus/')) {
+                            const match = normalized.match(/\/element-plus\/es\/components\/([^/]+)/)
+                            const component = match?.[1]
+                            if (['table', 'table-v2', 'tree', 'tree-select', 'pagination'].includes(component)) return 'element-data'
+                            if (['dialog', 'drawer', 'message', 'message-box', 'notification', 'popover', 'tooltip', 'popper'].includes(component)) return 'element-overlay'
+                            if (['input', 'input-number', 'select', 'select-v2', 'form', 'switch', 'radio', 'checkbox', 'date-picker', 'time-picker', 'upload'].includes(component)) return 'element-form'
+                            return component ? 'element-ui' : 'element-core'
+                        }
+                        if (id.includes('@iconify')) return 'icons'
+                        if (id.includes('dompurify')) return 'mail-sanitizer'
+                        if (id.includes('/vue/') || id.includes('vue-router') || id.includes('vue-i18n') || id.includes('pinia')) return 'vue-core'
+                        return 'vendor'
+                    }
+                }
+            }
         }
     }
 })

@@ -119,6 +119,7 @@ const en = {
     delivered: 'Delivered',
     complained: 'Complained',
     delayed: 'Delayed',
+    sendFailed: 'Email delivery failed',
     bounced: 'Bounced',
     attachments: 'Attachments',
     attCount: 'Total {total}',
@@ -381,6 +382,8 @@ const en = {
     mailNotificationsDenied: 'Notification permission was not granted. Enable it in the browser site settings.',
     mailNotificationsUnsupported: 'This browser does not support mail notifications',
     newMailNotification: 'You have a new email',
+    remoteImagesBlocked: 'Blocked {count} external images or resources to protect your privacy',
+    showRemoteImages: 'Show external images',
 }
 
 export default en

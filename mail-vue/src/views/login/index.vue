@@ -154,8 +154,7 @@
 import router from "@/router";
 import {useRoute} from "vue-router";
 import {computed, nextTick, reactive, ref} from "vue";
-import {login} from "@/request/login.js";
-import {register} from "@/request/login.js";
+import {adoptSession, login, register} from "@/request/login.js";
 import {websiteConfig} from "@/request/setting.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -249,11 +248,9 @@ window.onTurnstileError = (e) => {
 };
 
 window.loadAfter = (e) => {
-  console.log('loadAfter')
 }
 
 window.loadBefore = (e) => {
-  console.log('loadBefore')
 }
 
 const loginOpacity = computed(() => {
@@ -439,7 +436,9 @@ const submit = () => {
 }
 
 async function saveToken(token) {
-  localStorage.setItem('token', token)
+  await adoptSession(token)
+  localStorage.removeItem('token')
+  localStorage.setItem('cloud-mail-authenticated', '1')
   refreshWebsiteConfig()
   const user = await loginUserInfo();
   accountStore.currentAccountId = user.account.accountId;
@@ -482,7 +481,6 @@ function submitRegister() {
     return
   }
 
-  console.log(registerForm.email)
 
   if (getEmailName(registerForm.email).length < settingStore.settings.minEmailPrefix) {
     ElMessage({

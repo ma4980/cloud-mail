@@ -17,6 +17,7 @@ try {
 } catch (error) {
     console.error('Cloud Mail initialization failed:', error)
     localStorage.removeItem('token')
+    localStorage.removeItem('cloud-mail-authenticated')
 }
 
 app.use(router).use(i18n).directive('perm',perm)

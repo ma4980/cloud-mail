@@ -23,7 +23,7 @@ const dbInit = {
 			['1.7', 'v1_7DB'], ['2.0', 'v2DB'], ['2.3', 'v2_3DB'], ['2.4', 'v2_4DB'],
 			['2.5', 'v2_5DB'], ['2.6', 'v2_6DB'], ['2.7', 'v2_7DB'], ['2.8', 'v2_8DB'],
 			['2.9', 'v2_9DB'], ['3.0', 'v3_0DB'], ['3.1', 'v3_1DB'], ['3.2', 'v3_2DB'],
-			['3.3', 'v3_3DB']
+			['3.3', 'v3_3DB'], ['3.4', 'v3_4DB']
 		];
 
 		for (const [version, method] of migrations) {
@@ -34,6 +34,22 @@ const dbInit = {
 		}
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v3_4DB(c) {
+		await c.env.db.batch([
+			c.env.db.prepare(`CREATE TABLE IF NOT EXISTS push_subscription (
+				push_id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER NOT NULL,
+				endpoint TEXT NOT NULL UNIQUE,
+				expiration_time INTEGER,
+				p256dh TEXT NOT NULL,
+				auth TEXT NOT NULL,
+				create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`),
+			c.env.db.prepare('CREATE INDEX IF NOT EXISTS idx_push_subscription_user ON push_subscription(user_id, update_time)')
+		]);
 	},
 
 	async v3_3DB(c) {

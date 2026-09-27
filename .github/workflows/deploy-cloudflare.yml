@@ -28,6 +28,10 @@ jobs:
       AI_MODEL: ${{ secrets.AI_MODEL || vars.AI_MODEL || '@cf/meta/llama-3.1-8b-instruct-fast' }}
       CLOUDFLARE_EMAIL: ${{ secrets.CF_EMAIL || vars.CF_EMAIL || false }}
       ANALYSIS_CACHE: ${{ secrets.ANALYSIS_CACHE || vars.ANALYSIS_CACHE || false }}
+      RESEND_WEBHOOK_SECRET: ${{ secrets.RESEND_WEBHOOK_SECRET || vars.RESEND_WEBHOOK_SECRET }}
+      VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY || vars.VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY || vars.VAPID_PRIVATE_KEY }}
+      VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT || vars.VAPID_SUBJECT }}
 
 
     outputs:
@@ -36,15 +40,15 @@ jobs:
 
     steps:
       - name: 🚚 取出程式碼 / Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: ⚙ 設定 pnpm / Set up pnpm
-        uses: pnpm/action-setup@v4.1.0
+        uses: pnpm/action-setup@v6.0.9
         with:
           version: 11
 
       - name: ⚙ 設定 Node.js / Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: "pnpm"
@@ -63,6 +67,14 @@ jobs:
       - name: 🧪 執行測試 / Run tests
         run: pnpm test
         working-directory: ./mail-worker
+
+      - name: 🧹 檢查前端程式碼 / Lint frontend
+        run: pnpm lint
+        working-directory: ./mail-vue
+
+      - name: 🧪 執行前端測試 / Run frontend tests
+        run: pnpm test
+        working-directory: ./mail-vue
 
       - name: 🔒 相依套件安全稽核 / Audit dependencies
         run: |
@@ -92,6 +104,20 @@ jobs:
           if [ -z "$ADMIN" ]; then
             echo "❌ ADMIN variable cannot be empty."
             exit 1
+          fi
+
+          if [ -n "$VAPID_PUBLIC_KEY" ] || [ -n "$VAPID_PRIVATE_KEY" ]; then
+            if [ -z "$VAPID_PUBLIC_KEY" ] || [ -z "$VAPID_PRIVATE_KEY" ]; then
+              echo "❌ VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be configured together."
+              exit 1
+            fi
+            if [ -z "$VAPID_SUBJECT" ]; then
+              VAPID_SUBJECT="mailto:${ADMIN}"
+            fi
+          fi
+
+          if [ -z "$RESEND_WEBHOOK_SECRET" ]; then
+            echo "::warning::RESEND_WEBHOOK_SECRET is not set; Resend delivery-status webhooks will be rejected until it is configured."
           fi
           
           if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
@@ -135,6 +161,10 @@ jobs:
           sed -i "s|\"\${DOMAIN}\"|${DOMAIN}|g" "$CONFIG_FILE"
           sed -i "s|\${ADMIN}|${ADMIN}|g" "$CONFIG_FILE"
           sed -i "s|\${JWT_SECRET}|${JWT_SECRET}|g" "$CONFIG_FILE"
+          sed -i "s|\${RESEND_WEBHOOK_SECRET}|${RESEND_WEBHOOK_SECRET}|g" "$CONFIG_FILE"
+          sed -i "s|\${VAPID_PUBLIC_KEY}|${VAPID_PUBLIC_KEY}|g" "$CONFIG_FILE"
+          sed -i "s|\${VAPID_PRIVATE_KEY}|${VAPID_PRIVATE_KEY}|g" "$CONFIG_FILE"
+          sed -i "s|\${VAPID_SUBJECT}|${VAPID_SUBJECT}|g" "$CONFIG_FILE"
           sed -i "s|\${R2_BUCKET_NAME}|${R2_BUCKET_NAME}|g" "$CONFIG_FILE"
           sed -i "s|\${PROJECT_LINK}|${PROJECT_LINK}|g" "$CONFIG_FILE"
           sed -i "s|\${ANALYSIS_CACHE}|${ANALYSIS_CACHE}|g" "$CONFIG_FILE"

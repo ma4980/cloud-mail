@@ -110,7 +110,7 @@ const notificationOn = ref(notificationEnabled())
 
 async function toggleMailNotifications() {
   if (notificationOn.value) {
-    disableNotifications()
+    await disableNotifications()
     notificationOn.value = false
     ElMessage({message: t('mailNotificationsDisabled'), type: 'info'})
     return
@@ -278,6 +278,7 @@ function clickLogout() {
   logoutLoading.value = true
   logout().then(() => {
     localStorage.removeItem("token")
+    localStorage.removeItem('cloud-mail-authenticated')
     router.replace('/login')
   }).finally(() => {
     logoutLoading.value = false

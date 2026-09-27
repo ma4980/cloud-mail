@@ -30,9 +30,9 @@
                 <div>{{ formatDetailDate(email.createTime) }}</div>
               </div>
             </div>
-            <el-alert v-if="email.status === 3" :closable="false" :title="toMessage(email.message)" class="email-msg" type="error" show-icon />
-            <el-alert v-if="email.status === 4" :closable="false" :title="$t('complained')" class="email-msg" type="warning" show-icon />
-            <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')" class="email-msg" type="warning" show-icon />
+            <el-alert v-if="deliveryAlert" :closable="false" :title="deliveryAlert.title"
+                      :description="deliveryAlert.description" class="email-msg"
+                      :type="deliveryAlert.type" show-icon />
           </div>
           <el-scrollbar class="htm-scrollbar" :class="!email.attList?.length ? 'bottom-distance' : ''">
             <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
@@ -109,6 +109,16 @@ const showPreview = ref(false)
 const srcList = reactive([])
 
 const { t } = useI18n()
+const deliveryAlert = computed(() => {
+  const status = email.value.status
+  if (status === 1) return {title: t('sent'), type: 'info'}
+  if (status === 2) return {title: t('delivered'), type: 'success'}
+  if (status === 3) return {title: t('bounced'), description: toMessage(email.value.message), type: 'error'}
+  if (status === 4) return {title: t('complained'), type: 'warning'}
+  if (status === 5) return {title: t('delayed'), type: 'warning'}
+  if (status === 8) return {title: t('sendFailed'), description: toMessage(email.value.message), type: 'error'}
+  return null
+})
 watch(() => accountStore.currentAccountId, () => {
   handleBack()
 })
@@ -177,7 +187,13 @@ function openForward() {
 }
 
 function toMessage(message) {
-  return  message ? JSON.parse(message).message : '';
+  if (!message) return ''
+  try {
+    const parsed = JSON.parse(message)
+    return parsed?.message || parsed?.reason || message
+  } catch {
+    return String(message)
+  }
 }
 
 function formatImage(content) {

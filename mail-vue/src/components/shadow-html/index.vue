@@ -1,5 +1,9 @@
 <template>
   <div class="content-box" ref="contentBox">
+    <div v-if="blockedRemoteImages > 0 && !allowRemoteImages" class="remote-image-warning">
+      <span>{{ t('remoteImagesBlocked', {count: blockedRemoteImages}) }}</span>
+      <button type="button" @click="showRemoteImages">{{ t('showRemoteImages') }}</button>
+    </div>
     <div ref="container" class="content-html"></div>
   </div>
 </template>
@@ -7,6 +11,8 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import DOMPurify from 'dompurify'
+import {useI18n} from 'vue-i18n'
+import {isRemoteUrl} from '@/utils/remote-content-utils.js'
 
 const props = defineProps({
   html: {
@@ -17,7 +23,40 @@ const props = defineProps({
 
 const container = ref(null)
 const contentBox = ref(null)
+const blockedRemoteImages = ref(0)
+const allowRemoteImages = ref(false)
+const {t} = useI18n()
 let shadowRoot = null
+
+function blockRemoteResources(document) {
+  let blocked = 0
+  document.querySelectorAll('*').forEach(element => {
+    for (const attribute of ['src', 'poster', 'background', 'xlink:href']) {
+      const value = element.getAttribute(attribute)
+      if (isRemoteUrl(value)) {
+        element.removeAttribute(attribute)
+        blocked++
+      }
+    }
+    const srcset = element.getAttribute('srcset')
+    if (srcset && srcset.split(',').some(item => isRemoteUrl(item.trim().split(/\s+/)[0]))) {
+      element.removeAttribute('srcset')
+      blocked++
+    }
+    const style = element.getAttribute('style')
+    if (style && /url\s*\(\s*['"]?https?:\/\//i.test(style)) {
+      element.setAttribute('style', style.replace(/url\s*\([^)]*\)/gi, 'none'))
+      blocked++
+    }
+  })
+  return blocked
+}
+
+function showRemoteImages() {
+  allowRemoteImages.value = true
+  updateContent()
+  autoScale()
+}
 
 function updateContent() {
   if (!shadowRoot) return;
@@ -25,11 +64,12 @@ function updateContent() {
   const sanitizedDocument = DOMPurify.sanitize(props.html, {
     WHOLE_DOCUMENT: true,
     RETURN_DOM: true,
-    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'select', 'meta', 'base'],
-    FORBID_ATTR: ['srcdoc'],
+    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'textarea', 'select', 'meta', 'base', 'link'],
+    FORBID_ATTR: ['srcdoc', 'ping'],
     ALLOW_UNKNOWN_PROTOCOLS: false
   });
   const sanitizedBody = sanitizedDocument.querySelector('body');
+  blockedRemoteImages.value = allowRemoteImages.value ? 0 : blockRemoteResources(sanitizedBody || sanitizedDocument)
   const bodyStyle = sanitizedBody?.getAttribute('style')
     ?.replace(/(?:url|expression|@import)\s*\([^)]*\)/gi, '') || '';
   const cleanedHtml = sanitizedBody?.innerHTML || '';
@@ -110,6 +150,7 @@ onMounted(() => {
 })
 
 watch(() => props.html, () => {
+  allowRemoteImages.value = false
   updateContent()
   autoScale()
 })
@@ -121,6 +162,29 @@ watch(() => props.html, () => {
   height: 100%;
   overflow: hidden;
   font-family: Inter, "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+}
+
+.remote-image-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--el-color-warning-light-5);
+  border-radius: 6px;
+  color: var(--el-text-color-regular);
+  background: var(--el-color-warning-light-9);
+  font-size: 13px;
+}
+
+.remote-image-warning button {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--el-color-primary);
+  cursor: pointer;
+  font: inherit;
 }
 
 .content-html {

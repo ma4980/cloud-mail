@@ -4,12 +4,14 @@ import i18n from "@/i18n/index.js";
 import {useSettingStore} from "@/store/setting.js";
 
 let http = axios.create({
-    baseURL: import.meta.env.VITE_BASE_URL
+    baseURL: import.meta.env.VITE_BASE_URL,
+    withCredentials: true
 });
 
 http.interceptors.request.use(config => {
     const { lang } = useSettingStore();
-    config.headers.Authorization = `${localStorage.getItem('token')}`
+    const legacyToken = localStorage.getItem('token')
+    if (!config.headers.Authorization && legacyToken) config.headers.Authorization = legacyToken
     config.headers['accept-language'] = lang
     return config
 })
@@ -34,6 +36,7 @@ http.interceptors.response.use((res) => {
                     repeatNum: -4,
                 })
                 localStorage.removeItem('token')
+                localStorage.removeItem('cloud-mail-authenticated')
                 router.replace('/login')
                 reject(data)
             } else if (data.code === 403) {
@@ -48,7 +51,6 @@ http.interceptors.response.use((res) => {
 
             } else if (data.code === 502) {
                 ElMessage({
-                    dangerouslyUseHTMLString: true,
                     message: data.message,
                     type: 'error',
                     plain: true,

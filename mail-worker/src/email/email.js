@@ -12,6 +12,7 @@ import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
 import webhookService from '../service/webhook-service';
+import pushService from '../service/push-service';
 
 const MAX_INCOMING_MESSAGE_BYTES = 25 * 1024 * 1024;
 
@@ -177,6 +178,15 @@ export async function email(message, env, ctx) {
 		}
 
 		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId);
+
+		if (account) {
+			try {
+				await pushService.sendNewMail({ env }, emailRow);
+			} catch (error) {
+				// A push provider outage must never reject or lose the incoming email.
+				console.error('Web Push 傳送失敗：', error);
+			}
+		}
 
 
 		if (ruleType === settingConst.ruleType.RULE) {

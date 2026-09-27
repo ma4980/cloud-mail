@@ -6,6 +6,8 @@ import {permsToRouter} from "@/perm/perm.js";
 import router from "@/router";
 import {websiteConfig} from "@/request/setting.js";
 import i18n from "@/i18n/index.js";
+import {adoptSession} from '@/request/login.js'
+import {syncBackgroundPush} from '@/utils/notification-utils.js'
 
 export async function init() {
     document.title = '\u200B'
@@ -14,7 +16,12 @@ export async function init() {
     const userStore = useUserStore();
     const accountStore = useAccountStore();
 
-    const token = localStorage.getItem('token');
+    const legacyToken = localStorage.getItem('token');
+    if (legacyToken) {
+        await adoptSession(legacyToken)
+        localStorage.removeItem('token')
+        localStorage.setItem('cloud-mail-authenticated', '1')
+    }
     if (!settingStore.lang) {
         const browserLang = navigator.language.toLowerCase()
         let lang = 'en'
@@ -26,35 +33,26 @@ export async function init() {
 
     i18n.global.locale.value = settingStore.lang
 
-    let setting = null;
+    const [setting, user] = await Promise.all([
+        websiteConfig(),
+        loginUserInfo(true).catch(() => null)
+    ]);
+    settingStore.settings = setting;
+    settingStore.domainList = setting.domainList;
+    document.title = setting.title;
 
-    if (token) {
-        const userPromise = loginUserInfo().catch(e => {
-            console.error(e);
-            return null;
+    if (user) {
+        localStorage.setItem('cloud-mail-authenticated', '1')
+        accountStore.currentAccountId = user.account.accountId;
+        accountStore.currentAccount = user.account;
+        userStore.user = user;
+
+        const routers = permsToRouter(user.permKeys);
+        routers.forEach(routerData => {
+            router.addRoute('layout', routerData);
         });
-
-        const [s, user] = await Promise.all([websiteConfig(), userPromise]);
-        setting = s;
-        settingStore.settings = setting;
-        settingStore.domainList = setting.domainList;
-        document.title = setting.title;
-
-        if (user) {
-            accountStore.currentAccountId = user.account.accountId;
-            accountStore.currentAccount = user.account;
-            userStore.user = user;
-
-            const routers = permsToRouter(user.permKeys);
-            routers.forEach(routerData => {
-                router.addRoute('layout', routerData);
-            });
-        }
-
+        void syncBackgroundPush();
     } else {
-        setting = await websiteConfig();
-        settingStore.settings = setting;
-        settingStore.domainList = setting.domainList;
-        document.title = setting.title;
+        localStorage.removeItem('cloud-mail-authenticated')
     }
 }

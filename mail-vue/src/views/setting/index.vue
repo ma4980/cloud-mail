@@ -148,6 +148,7 @@ const deleteConfirm = () => {
   }).then(() => {
     userDelete().then(() => {
       localStorage.removeItem('token');
+      localStorage.removeItem('cloud-mail-authenticated');
       router.replace('/login');
       ElMessage({
         message: t('delSuccessMsg'),

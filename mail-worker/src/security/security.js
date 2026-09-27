@@ -7,6 +7,8 @@ import userService from '../service/user-service';
 import permService from '../service/perm-service';
 import { t } from '../i18n/i18n'
 import app from '../hono/hono';
+import { getCookie } from 'hono/cookie';
+import { SESSION_COOKIE } from './session-cookie';
 
 const exclude = [
 	'/login',
@@ -113,7 +115,7 @@ app.use('*', async (c, next) => {
 	}
 
 
-	const jwt = c.req.header(constant.TOKEN_HEADER);
+	const jwt = c.req.header(constant.TOKEN_HEADER) || getCookie(c, SESSION_COOKIE);
 
 	const result = await jwtUtils.verifyToken(c, jwt);
 
@@ -162,6 +164,7 @@ app.use('*', async (c, next) => {
 	}
 
 	c.set('user',authInfo.user)
+	c.set('jwt', jwt)
 
 	return await next();
 });

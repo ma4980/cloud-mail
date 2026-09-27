@@ -98,7 +98,7 @@ router.beforeEach((to, from, next) => {
         }, 100)
     }
 
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('cloud-mail-authenticated') || localStorage.getItem('token')
 
     if (!token && !to.path.startsWith('/login')) {
         return next({name: 'login'})

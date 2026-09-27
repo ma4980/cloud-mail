@@ -12,6 +12,35 @@ import userContext from '../security/user-context';
 import domainUtils from '../utils/domain-uitls';
 import {validateWebhookUrl} from './webhook-service';
 
+const MASK_SUFFIX = '******';
+const SECRET_FIELDS = [
+	'secretKey',
+	's3AccessKey',
+	's3SecretKey',
+	'tgBotToken',
+	'webhookSecret',
+	'linuxdoClientSecret',
+	'githubClientSecret',
+	'googleClientSecret'
+];
+
+const isMasked = value => typeof value === 'string' && value.endsWith(MASK_SUFFIX);
+const maskSecret = (value, visible = 6) => value ? `${String(value).slice(0, visible)}${MASK_SUFFIX}` : null;
+const maskWebhookUrl = value => {
+	if (!value) return '';
+	try {
+		const url = new URL(value);
+		const parts = url.pathname.split('/').filter(Boolean);
+		if (parts.length) parts[parts.length - 1] = MASK_SUFFIX;
+		url.pathname = `/${parts.join('/')}`;
+		url.search = '';
+		url.hash = '';
+		return url.toString();
+	} catch {
+		return maskSecret(value, 12);
+	}
+};
+
 const settingService = {
 
 	async refresh(c) {
@@ -69,25 +98,32 @@ const settingService = {
 
 	async get(c, showSiteKey = false) {
 
-		const [settingRow, recordList] = await Promise.all([
+		const [cachedSetting, recordList] = await Promise.all([
 			await this.query(c),
 			verifyRecordService.selectListByIP(c)
 		]);
+		// Never mutate the request/KV-cached settings object while preparing an API response.
+		const settingRow = structuredClone(cachedSetting);
 
 
 		if (!showSiteKey) {
 			settingRow.siteKey = settingRow.siteKey ? `${settingRow.siteKey.slice(0, 6)}******` : null;
 		}
 
-		settingRow.secretKey = settingRow.secretKey ? `${settingRow.secretKey.slice(0, 6)}******` : null;
+		settingRow.secretKey = maskSecret(settingRow.secretKey);
 
 		Object.keys(settingRow.resendTokens).forEach(key => {
-			settingRow.resendTokens[key] = `${settingRow.resendTokens[key].slice(0, 12)}******`;
+			settingRow.resendTokens[key] = maskSecret(settingRow.resendTokens[key], 12);
 		});
 
-		settingRow.s3AccessKey = settingRow.s3AccessKey ? `${settingRow.s3AccessKey.slice(0, 12)}******` : null;
-		settingRow.s3SecretKey = settingRow.s3SecretKey ? `${settingRow.s3SecretKey.slice(0, 12)}******` : null;
-		settingRow.tgBotToken = settingRow.tgBotToken ? `${settingRow.tgBotToken.slice(0, 20)}******` : null;
+		settingRow.s3AccessKey = maskSecret(settingRow.s3AccessKey, 12);
+		settingRow.s3SecretKey = maskSecret(settingRow.s3SecretKey, 12);
+		settingRow.tgBotToken = maskSecret(settingRow.tgBotToken, 20);
+		settingRow.webhookSecret = maskSecret(settingRow.webhookSecret);
+		settingRow.webhookUrl = maskWebhookUrl(settingRow.webhookUrl);
+		settingRow.linuxdoClientSecret = maskSecret(settingRow.linuxdoClientSecret);
+		settingRow.githubClientSecret = maskSecret(settingRow.githubClientSecret);
+		settingRow.googleClientSecret = maskSecret(settingRow.googleClientSecret);
 		settingRow.hasR2 = !!c.env.r2
 		settingRow.hasCfEmail = !!c.env.email
 
@@ -113,7 +149,11 @@ const settingService = {
 
 	async set(c, params) {
 		const settingData = await this.query(c);
-		let resendTokens = { ...settingData.resendTokens, ...params.resendTokens };
+		const incomingTokens = { ...(params.resendTokens || {}) };
+		Object.keys(incomingTokens).forEach(domain => {
+			if (isMasked(incomingTokens[domain])) delete incomingTokens[domain];
+		});
+		let resendTokens = { ...settingData.resendTokens, ...incomingTokens };
 		Object.keys(resendTokens).forEach(domain => {
 			if (!resendTokens[domain]) delete resendTokens[domain];
 		});
@@ -126,7 +166,13 @@ const settingService = {
 			params.aiCodeFilter = params.aiCodeFilter + '';
 		}
 
-		if (params.webhookUrl !== undefined) {
+		for (const field of SECRET_FIELDS) {
+			if (isMasked(params[field])) delete params[field];
+		}
+
+		if (isMasked(params.webhookUrl)) {
+			delete params.webhookUrl;
+		} else if (params.webhookUrl !== undefined) {
 			params.webhookUrl = domainUtils.toOssDomain(params.webhookUrl) || '';
 			if (params.webhookUrl) {
 				try {

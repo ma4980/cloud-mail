@@ -6,6 +6,7 @@ import emailService from './service/email-service';
 import kvObjService from './service/kv-obj-service';
 import oauthService from './service/oauth-service';
 import analysisService from './service/analysis-service';
+import { secureResponse } from './security/response-headers';
 export default {
 	 async fetch(req, env, ctx) {
 
@@ -14,14 +15,14 @@ export default {
 		if (url.pathname.startsWith('/api/')) {
 			url.pathname = url.pathname.replace('/api', '')
 			req = new Request(url.toString(), req)
-			return app.fetch(req, env, ctx);
+			return secureResponse(await app.fetch(req, env, ctx), { api: true });
 		}
 
 		 if (['/static/','/attachments/'].some(p => url.pathname.startsWith(p))) {
-			 return await kvObjService.toObjResp( { env }, url.pathname.substring(1));
+			 return secureResponse(await kvObjService.toObjResp( { env }, url.pathname.substring(1)));
 		 }
 
-		return env.assets.fetch(req);
+		return secureResponse(await env.assets.fetch(req));
 	},
 	email: email,
 	async scheduled(c, env, ctx) {

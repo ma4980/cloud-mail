@@ -43,6 +43,10 @@ analysis_cache = "${ANALYSIS_CACHE}"
 domain = "${DOMAIN}"
 admin = "${ADMIN}"
 jwt_secret = "${JWT_SECRET}"
+resend_webhook_secret = "${RESEND_WEBHOOK_SECRET}"
+vapid_public_key = "${VAPID_PUBLIC_KEY}"
+vapid_private_key = "${VAPID_PRIVATE_KEY}"
+vapid_subject = "${VAPID_SUBJECT}"
 project_link = "${PROJECT_LINK}"
 
 [build]

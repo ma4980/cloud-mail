@@ -145,7 +145,8 @@ const webhookService = {
 					return { success: true, status: res.status };
 				}
 
-				lastError = `status: ${res.status} response: ${(await res.text()).slice(0, 1000)}`;
+				const responsePreview = (await res.text()).replace(/[\r\n\t]+/g, ' ').slice(0, 500);
+				lastError = `HTTP ${res.status}${responsePreview ? `：${responsePreview}` : ''}`;
 			} catch (e) {
 				lastError = e.message;
 			}

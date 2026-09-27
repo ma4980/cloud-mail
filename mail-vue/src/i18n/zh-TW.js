@@ -119,6 +119,7 @@ const zh = {
     delivered: '傳送成功',
     complained: '被標記為垃圾',
     delayed: '傳送被延遲',
+    sendFailed: '郵件傳送失敗',
     bounced: '傳送失敗',
     attachments: '附件列表',
     attCount: '共 {total} 個',
@@ -381,5 +382,7 @@ const zh = {
     mailNotificationsDenied: '通知權限未允許，請到瀏覽器網站設定中開啟',
     mailNotificationsUnsupported: '此瀏覽器不支援郵件通知',
     newMailNotification: '您有一封新郵件',
+    remoteImagesBlocked: '已封鎖 {count} 個外部圖片或資源，以保護您的隱私',
+    showRemoteImages: '顯示外部圖片',
 }
 export default zh

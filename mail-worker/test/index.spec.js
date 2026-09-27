@@ -2,6 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import cryptoUtils from '../src/utils/crypto-utils.js';
 import jwtUtils from '../src/utils/jwt-utils.js';
 import webhookService, { buildWebhookPayload, isDiscordWebhookUrl } from '../src/service/webhook-service.js';
+import { verifyResendWebhook } from '../src/utils/resend-webhook-utils.js';
+import { Hono } from 'hono';
+import { setSessionCookie } from '../src/security/session-cookie.js';
+import { secureResponse } from '../src/security/response-headers.js';
 
 describe('credential security', () => {
 	it('hashes new passwords with versioned PBKDF2 and verifies them', async () => {
@@ -48,6 +52,50 @@ describe('JWT security', () => {
 			.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
 		expect(await jwtUtils.verifyToken(context, `${header}.${payload}.${signature}`)).toBeNull();
+	});
+});
+
+describe('Resend webhook security', () => {
+	it('accepts a valid Svix signature and rejects tampered payloads', async () => {
+		const secretBytes = new TextEncoder().encode('resend-webhook-test-secret');
+		const secret = `whsec_${btoa(String.fromCharCode(...secretBytes))}`;
+		const payload = JSON.stringify({ type: 'email.delivered', data: { email_id: 'email-id' } });
+		const timestamp = String(Math.floor(Date.now() / 1000));
+		const id = 'msg_test';
+		const key = await crypto.subtle.importKey('raw', secretBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+		const signed = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${id}.${timestamp}.${payload}`)));
+		const signature = `v1,${btoa(String.fromCharCode(...signed))}`;
+
+		expect(await verifyResendWebhook(payload, { id, timestamp, signature }, secret)).toBe(true);
+		expect(await verifyResendWebhook(`${payload} `, { id, timestamp, signature }, secret)).toBe(false);
+	});
+
+	it('rejects replayed events outside the timestamp window', async () => {
+		expect(await verifyResendWebhook('{}', {
+			id: 'msg_old', timestamp: '1', signature: 'v1,AAAA'
+		}, 'whsec_dGVzdA==')).toBe(false);
+	});
+});
+
+describe('HTTP security', () => {
+	it('stores sessions in a secure HttpOnly cookie', async () => {
+		const app = new Hono();
+		app.get('/', c => {
+			setSessionCookie(c, 'jwt-value');
+			return c.text('ok');
+		});
+		const response = await app.request('https://mail.example.com/');
+		const cookie = response.headers.get('set-cookie');
+		expect(cookie).toContain('HttpOnly');
+		expect(cookie).toContain('Secure');
+		expect(cookie).toContain('SameSite=Strict');
+	});
+
+	it('adds CSP, HSTS and no-store headers to API responses', () => {
+		const response = secureResponse(new Response('{}'), {api: true});
+		expect(response.headers.get('content-security-policy')).toContain("default-src 'self'");
+		expect(response.headers.get('strict-transport-security')).toContain('max-age=31536000');
+		expect(response.headers.get('cache-control')).toBe('no-store');
 	});
 });
 

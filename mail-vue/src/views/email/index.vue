@@ -35,7 +35,7 @@ import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
 import { useRoute } from 'vue-router'
 import {useI18n} from 'vue-i18n'
-import {notificationEnabled, showMailNotification} from '@/utils/notification-utils.js'
+import {backgroundPushEnabled, notificationEnabled, showMailNotification} from '@/utils/notification-utils.js'
 
 defineOptions({
   name: 'email'
@@ -89,7 +89,7 @@ async function latest() {
     let autoRefresh = settingStore.settings.autoRefresh;
     await sleep((autoRefresh > 1 ? autoRefresh * 1000 : 3000) + failureDelay);
 
-    if (!polling || route.name !== 'email' || (document.hidden && !notificationEnabled())) {
+    if (!polling || route.name !== 'email' || (document.hidden && (backgroundPushEnabled() || !notificationEnabled()))) {
       continue;
     }
 

@@ -4,3 +4,5 @@ allowBuilds:
   '@parcel/watcher': true
   esbuild: true
   vue-demi: true
+overrides:
+  caniuse-lite: ^1.0.30001812
