@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import cryptoUtils from '../src/utils/crypto-utils.js';
 import jwtUtils from '../src/utils/jwt-utils.js';
+import { buildWebhookPayload, isDiscordWebhookUrl } from '../src/service/webhook-service.js';
 
 describe('credential security', () => {
 	it('hashes new passwords with versioned PBKDF2 and verifies them', async () => {
@@ -47,5 +48,38 @@ describe('JWT security', () => {
 			.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 
 		expect(await jwtUtils.verifyToken(context, `${header}.${payload}.${signature}`)).toBeNull();
+	});
+});
+
+describe('webhook payloads', () => {
+	const email = {
+		emailId: 42,
+		sendEmail: 'sender@example.com',
+		name: 'Sender',
+		toEmail: 'mail@example.net',
+		toName: 'Inbox',
+		subject: 'Test message',
+		text: 'Hello from Cloud Mail',
+		content: '<p>Hello from Cloud Mail</p>',
+		code: '123456',
+		createTime: '2026-09-27T12:00:00.000Z'
+	};
+
+	it('formats Discord webhook notifications as a visible message', () => {
+		const url = 'https://discord.com/api/webhooks/123/token';
+		const payload = buildWebhookPayload(email, url);
+
+		expect(isDiscordWebhookUrl(url)).toBe(true);
+		expect(payload.content).toBe('📬 收到新郵件');
+		expect(payload.embeds[0].title).toBe('Test message');
+		expect(payload.embeds[0].fields).toContainEqual(expect.objectContaining({ name: '驗證碼', value: '123456' }));
+		expect(payload.allowed_mentions).toEqual({ parse: [] });
+	});
+
+	it('keeps the existing JSON contract for generic webhooks', () => {
+		const payload = buildWebhookPayload(email, 'https://hooks.example.com/mail');
+
+		expect(payload.emailId).toBe(42);
+		expect(payload.embeds).toBeUndefined();
 	});
 });
