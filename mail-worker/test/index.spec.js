@@ -95,5 +95,6 @@ describe('webhook payloads', () => {
 		expect(delivery).toEqual({ success: true, status: 200 });
 		expect(url).toContain('wait=true');
 		expect(options.headers['User-Agent']).toContain('CloudMail/1.0');
+		expect(options.redirect).toBe('manual');
 	});
 });

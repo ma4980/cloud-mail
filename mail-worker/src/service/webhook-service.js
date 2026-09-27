@@ -135,7 +135,9 @@ const webhookService = {
 					method: 'POST',
 					headers,
 					body,
-					redirect: 'error',
+					// Cloudflare Workers only supports "follow" and "manual".
+					// Keep redirects manual so a webhook cannot redirect requests to a private host.
+					redirect: 'manual',
 					signal: AbortSignal.timeout(10000)
 				});
 
