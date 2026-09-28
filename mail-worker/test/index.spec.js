@@ -6,6 +6,24 @@ import { verifyResendWebhook } from '../src/utils/resend-webhook-utils.js';
 import { Hono } from 'hono';
 import { setSessionCookie } from '../src/security/session-cookie.js';
 import { secureResponse } from '../src/security/response-headers.js';
+import emailUtils from '../src/utils/email-utils.js';
+
+describe('outbound email formatting', () => {
+	it('creates a readable plain-text alternative from HTML', () => {
+		expect(emailUtils.buildPlainText('', '<p>學校測試<br>已收到</p>', '主旨'))
+			.toBe('學校測試\n已收到');
+	});
+
+	it('falls back to the subject for image-only messages', () => {
+		expect(emailUtils.buildPlainText('', '<img src="cid:test">', '圖片通知'))
+			.toBe('圖片通知');
+	});
+
+	it('removes line breaks from mail headers', () => {
+		expect(emailUtils.sanitizeHeader('TA\r\n Bcc: attacker@example.com'))
+			.toBe('TA Bcc: attacker@example.com');
+	});
+});
 
 describe('credential security', () => {
 	it('hashes new passwords with versioned PBKDF2 and verifies them', async () => {

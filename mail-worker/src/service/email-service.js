@@ -260,6 +260,8 @@ const emailService = {
 		const { resendTokens, r2Domain, send, domainList } = await settingService.query(c);
 
 		let { imageDataList, html } = await attService.toImageUrlHtml(c, content);
+		subject = emailUtils.sanitizeHeader(subject);
+		text = emailUtils.buildPlainText(text, html, subject);
 		const allAttachments = [...imageDataList, ...attachments];
 		this.validateAttachments(allAttachments);
 
@@ -337,6 +339,7 @@ const emailService = {
 		if (!name) {
 			name = emailUtils.getName(accountRow.email);
 		}
+		name = emailUtils.sanitizeHeader(name);
 
 		let emailRow = {
 			messageId: null
@@ -514,12 +517,23 @@ const emailService = {
 			from: `${params.name} <${params.accountEmail}>`,
 			to: [...params.receiveEmail],
 			subject: params.subject,
-			text: params.text,
-			html: params.html,
-			attachments: await this.toResendAttachments(params.attachments)
+			replyTo: params.accountEmail
 		};
 
-		if (params.sendType === 'reply') {
+		if (params.text) {
+			sendForm.text = params.text;
+		}
+
+		if (params.html) {
+			sendForm.html = params.html;
+		}
+
+		const attachments = await this.toResendAttachments(params.attachments);
+		if (attachments.length > 0) {
+			sendForm.attachments = attachments;
+		}
+
+		if (params.sendType === 'reply' && params.messageId) {
 			sendForm.headers = {
 				'in-reply-to': params.messageId,
 				'references': params.messageId

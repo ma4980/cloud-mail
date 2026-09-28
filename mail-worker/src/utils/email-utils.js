@@ -35,6 +35,13 @@ const emailUtils = {
 			.trim();
 	},
 
+	sanitizeHeader(value) {
+		return String(value || '')
+			.replace(/[\r\n]+/g, ' ')
+			.replace(/\s{2,}/g, ' ')
+			.trim();
+	},
+
 	htmlToText(content) {
 		if (!content) return ''
 		try {
@@ -49,6 +56,12 @@ const emailUtils = {
 			console.error(e)
 			return ''
 		}
+	},
+
+	buildPlainText(text, html, subject = '') {
+		return this.formatText(text)
+			|| this.htmlToText(html)
+			|| this.formatText(subject);
 	}
 };
 
